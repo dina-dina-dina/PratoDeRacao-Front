@@ -1,0 +1,249 @@
+.home-page {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f1f0fc;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+.cabecalho {
+  background-color: #0c3f8c; /* Mudança para azul escuro */
+  color: white;
+  padding: 0;
+  text-align: center;
+  border-bottom: 3px solid #fcad0b; /* Adicionado um detalhe laranja vibrante */
+  width: 100%;
+}
+.cabecalho img {
+  width: 100%;
+  max-width: 450px;
+  margin: 0;
+  height: auto;
+  border-radius: 50%;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  gap: 20px;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+aside {
+  flex: 1;
+  max-width: 300px;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #0c3f8c52;
+}
+aside img {
+  width: 100%;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  transition: transform 0.3s ease;
+}
+aside img:hover {
+  transform: scale(1.05);
+}
+aside h2 {
+  color: #0c3f8c; /* Azul escuro para o nome do pet */
+  margin-bottom: 10px;
+}
+.info-pet {
+  margin-bottom: 15px;
+}
+.info-pet p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #555;
+}
+.info-pet p i {
+  color: #fcad0b; /* Ícones com cor laranja vibrante */
+  margin-right: 10px;
+  transition: color 0.3s ease;
+}
+.info-pet p:hover i {
+  color: #0c3f8c;
+}
+.barra-habilidade {
+  width: 100%;
+  background-color: #e2ebec;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.barra-habilidade span {
+  display: block;
+  height: 10px;
+  background-color: #fcad0b; /* Barras de habilidade em laranja */
+  border-radius: 5px;
+}
+
+.grafico-resumo, .grafico-container {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 50px;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: -3px 3px 2px #0c3f8c; /* Borda superior azul escura para destaque */
+}
+
+.main-content {
+  background-image: url(../public/fundo2.png);
+  background-size: 75px;
+}
+
+section {
+  flex: 3;
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px #0c3f8c43;
+}
+
+.formulario, .modal-content {
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 100px;
+  position: relative;
+  box-shadow: -3px 3px 2px #fcad0b;
+}
+.formulario label, .modal-content label {
+  display: block;
+  margin-top: 10px;
+  color: #0c3f8c; /* Azul escuro para os textos dos labels */
+  font-weight: bold;
+}
+.formulario input,
+.modal-content input,
+.modal-content textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #e2e2ec;
+  box-sizing: border-box;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+}
+
+.close-modal {
+  background-color: transparent;
+  border: none;
+  font-size: 1.5em;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  width: 10%;
+}
+
+
+.formulario-botoes {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 30px;
+  padding: 15px 25px;
+  font-size: 1em;
+}
+
+.botoes{
+  background-color: #fcad0b; /* Laranja vibrante para os botões */
+  color: white;
+  padding: 10px 20px;
+  font-size: 1.2em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.close-modal, .botoes-inside {
+  background-color: #fcad0b; /* Laranja vibrante para os botões */
+  color: white;
+  padding: 10px 20px;
+  margin-top: 20px;
+  font-size: 1em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+.botoes:hover, .close-modal:hover {
+  background-color: #0c3f8c; /* Azul escuro ao passar o mouse */
+}
+
+footer {
+  background-color: #0c3f8c; /* Azul escuro para o rodapé */
+  color: white;
+  text-align: center;
+  padding: 15px;
+  margin-top: 0px;
+}
+footer p {
+  margin: 1px 0;
+}
+
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    padding: 10px;
+  }
+  aside,
+  section {
+    max-width: 100%;
+  }
+  .formulario button {
+    float: right;
+    margin-top: 30px;
+  }
+  .cabecalho {
+    padding: 0px;
+    max-width: 100vw;
+  }
+  .cabecalho img {
+    max-width: 300px;
+  }
+  .main-content {
+    background-image: none;
+  }
+  .modal-content {
+    width: 85%;
+  }
+}
