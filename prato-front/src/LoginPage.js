@@ -7,33 +7,35 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
 
-  const handleLogin = async () => {
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
+// frontend/src/LoginPage.js
+const handleLogin = async () => {
+  const email = document.getElementById("username").value; // Considerando email como username
+  const password = document.getElementById("password").value;
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        alert(data.message);
-        localStorage.setItem('userEmail', username); // Armazena o email no localStorage
-        navigate("/home"); // Redireciona para a página principal
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message);
-      }
-    } catch (error) {
-      alert('Erro ao tentar fazer login. Por favor, tente novamente mais tarde.');
-      console.error(error);
+    if (response.ok) {
+      const data = await response.json();
+      alert(data.message);
+      localStorage.setItem('token', data.token); // Armazena o token JWT
+      navigate("/home"); // Redireciona para a página principal
+    } else {
+      const errorData = await response.json();
+      alert(errorData.message || 'Erro no login');
     }
-  };
+  } catch (error) {
+    alert('Erro ao tentar fazer login. Por favor, tente novamente mais tarde.');
+    console.error(error);
+  }
+};
+
 
   const handleRegister = async () => {
     const email = document.getElementById("email").value;
