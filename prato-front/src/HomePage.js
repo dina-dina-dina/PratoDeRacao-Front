@@ -4,15 +4,17 @@ import Chart from "chart.js/auto";
 import API_BASE_URL from "./config";
 
 const HomePage = () => {
-  // Use refs para armazenar as instâncias dos gráficos
+  // Refs para os gráficos
   const graficoRef = useRef(null);
   const graficoResumoRef = useRef(null);
+
+  // Estados
   const [tutorInfo, setTutorInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isTutorModalOpen, setIsTutorModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  
+
   const [userEmail, setUserEmail] = useState("");
   const [petInfo, setPetInfo] = useState({
     nome: "",
@@ -31,9 +33,8 @@ const HomePage = () => {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-
-   // Função para buscar o perfil do tutor
-   const fetchTutorProfile = async () => {
+  // Função para buscar o perfil do tutor
+  const fetchTutorProfile = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/tutors/me`, {
@@ -57,34 +58,15 @@ const HomePage = () => {
     }
   };
 
+  // Hooks useEffect
   useEffect(() => {
     fetchTutorProfile();
   }, []);
 
-  if (loading) {
-    return <p>Carregando...</p>;
-  }
-
-  if (!tutorInfo) {
-    return <p>Nenhuma informação encontrada</p>;
-  }
-
-  // Funções para abrir e fechar os modais
-  const abrirFormulario = (tipo) => {
-    if (tipo === "cadastroPetModal") setIsPetModalOpen(true);
-    if (tipo === "cadastroTutorModal") setIsTutorModalOpen(true);
-    if (tipo === "changePassword") setIsChangePasswordOpen(true);
-  };
-
-  const fecharFormulario = (tipo) => {
-    if (tipo === "cadastroPetModal") setIsPetModalOpen(false);
-    if (tipo === "cadastroTutorModal") setIsTutorModalOpen(false);
-    if (tipo === "changePassword") {
-      setIsChangePasswordOpen(false);
-      setOldPassword("");
-      setNewPassword("");
-    }
-  };
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("userEmail");
+    if (storedEmail) setUserEmail(storedEmail);
+  }, []);
 
   useEffect(() => {
     // Limpeza: destruir os gráficos se eles já existirem
@@ -94,11 +76,6 @@ const HomePage = () => {
     if (graficoResumoRef.current) {
       graficoResumoRef.current.destroy();
     }
-
-    useEffect(() => {
-      const storedEmail = localStorage.getItem("userEmail");
-      if (storedEmail) setUserEmail(storedEmail);
-    }, []);
 
     // Obter o contexto dos elementos canvas
     const ctx = document.getElementById("grafico");
@@ -113,15 +90,7 @@ const HomePage = () => {
       graficoRef.current = new Chart(ctxGraph, {
         type: "bar",
         data: {
-          labels: [
-            "Domingo",
-            "Segunda",
-            "Terça",
-            "Quarta",
-            "Quinta",
-            "Sexta",
-            "Sábado",
-          ],
+          labels: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
           datasets: [
             {
               label: "Consumo de Ração (g)",
@@ -176,6 +145,24 @@ const HomePage = () => {
     };
   }, []);
 
+  // Funções para abrir e fechar os modais
+  const abrirFormulario = (tipo) => {
+    if (tipo === "cadastroPetModal") setIsPetModalOpen(true);
+    if (tipo === "cadastroTutorModal") setIsTutorModalOpen(true);
+    if (tipo === "changePassword") setIsChangePasswordOpen(true);
+  };
+
+  const fecharFormulario = (tipo) => {
+    if (tipo === "cadastroPetModal") setIsPetModalOpen(false);
+    if (tipo === "cadastroTutorModal") setIsTutorModalOpen(false);
+    if (tipo === "changePassword") {
+      setIsChangePasswordOpen(false);
+      setOldPassword("");
+      setNewPassword("");
+    }
+  };
+
+  // Handlers de formulários
   const handlePetRegistration = async (e) => {
     e.preventDefault();
     try {
@@ -199,7 +186,6 @@ const HomePage = () => {
       console.error(error);
     }
   };
-  
 
   const handleTutorRegistration = async (e) => {
     e.preventDefault();
@@ -224,7 +210,7 @@ const HomePage = () => {
       console.error(error);
     }
   };
-  
+
   const handleChangePassword = async (e) => {
     e.preventDefault();
     try {
@@ -252,13 +238,14 @@ const HomePage = () => {
     }
   };
 
-  // Obter o email do usuário logado
-  useEffect(() => {
-    const storedEmail = localStorage.getItem("userEmail");
-    if (storedEmail) {
-      setUserEmail(storedEmail);
-    }
-  }, []);
+  // Renderização condicional dentro do JSX
+  if (loading) {
+    return <p>Carregando...</p>;
+  }
+
+  if (!tutorInfo) {
+    return <p>Nenhuma informação encontrada</p>;
+  }
 
   return (
     <div className="home-page">
@@ -275,18 +262,18 @@ const HomePage = () => {
             />
             <h2>Mimi</h2>
             <div className="info-pet">
-            <section>
-          <h3>Seus Pets:</h3>
-          <ul>
-            {tutorInfo.pets.map((pet) => (
-              <li key={pet._id}>
-                <p>Nome: {pet.nome}</p>
-                <p>Raça: {pet.raca}</p>
-                <p>Peso: {pet.peso} kg</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+              <section>
+                <h3>Seus Pets:</h3>
+                <ul>
+                  {tutorInfo.pets.map((pet) => (
+                    <li key={pet._id}>
+                      <p>Nome: {pet.nome}</p>
+                      <p>Raça: {pet.raca}</p>
+                      <p>Peso: {pet.peso} kg</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
               <p>
                 <i className="fas fa-paw"></i> Raça: Labrador
               </p>
@@ -394,22 +381,22 @@ const HomePage = () => {
             <input
               type="text"
               placeholder="Nome"
-              value={tutorInfo.nome}
-              onChange={(e) => setTutorInfo({ ...tutorInfo, nome: e.target.value })}
+              value={tutorInfoForm.nome}
+              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, nome: e.target.value })}
               required
             />
             <input
               type="email"
               placeholder="Email"
-              value={tutorInfo.email}
-              onChange={(e) => setTutorInfo({ ...tutorInfo, email: e.target.value })}
+              value={tutorInfoForm.email}
+              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, email: e.target.value })}
               required
             />
             <input
               type="tel"
               placeholder="Telefone"
-              value={tutorInfo.telefone}
-              onChange={(e) => setTutorInfo({ ...tutorInfo, telefone: e.target.value })}
+              value={tutorInfoForm.telefone}
+              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, telefone: e.target.value })}
               required
             />
             <button type="submit">Cadastrar Tutor</button>
