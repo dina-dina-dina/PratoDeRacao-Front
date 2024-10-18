@@ -1,3 +1,4 @@
+// src/LoginPage.js
 import React, { useState } from "react";
 import "./login.css";
 import { useNavigate } from "react-router-dom";
@@ -6,72 +7,63 @@ import API_BASE_URL from "./config";
 const LoginPage = () => {
   const navigate = useNavigate();
   const [isRegister, setIsRegister] = useState(false);
-  const [email, setEmail] = useState(""); // Estado para armazenar o email
-  const [password, setPassword] = useState(""); // Estado para armazenar a senha
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState(""); // Adicionado
+  const [nome, setNome] = useState(""); // Novo estado para nome
+  const [telefone, setTelefone] = useState(""); // Novo estado para telefone
+  const [error, setError] = useState(""); // Novo estado para mensagens de erro
 
-  // Função para lidar com o login
   const handleLogin = async () => {
-    if (!email.includes("@")) {
-      alert("Por favor, insira um e-mail válido.");
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }), // Usando diretamente o valor dos estados
+        body: JSON.stringify({ email, password }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        alert(data.message);
-        localStorage.setItem("token", data.token); // Armazena o token JWT
-        navigate("/home"); // Redireciona para a página principal
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userEmail', email);
+        navigate('/home');
       } else {
         const errorData = await response.json();
-        alert(errorData.message || "Erro no login");
+        setError(errorData.message || 'Erro no login');
       }
     } catch (error) {
-      alert(
-        "Erro ao tentar fazer login. Por favor, tente novamente mais tarde."
-      );
-      console.error(error);
+      setError('Erro ao tentar fazer login.');
+      console.error('Login error:', error);
     }
   };
 
-  // Função para lidar com o registro
-  const handleRegister = async () => {
-    if (!email.includes("@")) {
-      alert("Por favor, insira um e-mail válido.");
-      return;
-    }
-
+  const handleRegister = async (e) => {
+    e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }), // Usando diretamente o estado do email
+        body: JSON.stringify({ email, password, nome, telefone }), // Enviando nome e telefone
       });
 
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('token', data.token); // Salva o token no localStorage
-        localStorage.setItem('userEmail', email); // Salva o email do usuário logado
-        navigate('/home'); // Redireciona para a página principal
         alert(data.message);
-        setIsRegister(false); // Retorna para o formulário de login
+        setIsRegister(false); // Volta para a tela de login após registro bem-sucedido
+        setEmail("");
+        setPassword(""); // Limpar campos após registro
+        setNome("");
+        setTelefone("");
       } else {
         const errorData = await response.json();
-        alert(errorData.message);
+        setError(errorData.message || "Erro no registro.");
       }
     } catch (error) {
-      alert("Erro ao tentar registrar. Por favor, tente novamente mais tarde.");
-      console.error(error);
+      console.error("Erro ao registrar:", error);
+      setError("Erro ao tentar registrar. Por favor, tente novamente mais tarde.");
     }
   };
 
@@ -81,21 +73,57 @@ const LoginPage = () => {
         <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Pet Tech Logo" />
       </div>
       <div className="login-container">
+        {error && <p className="error-message">{error}</p>}
         {isRegister ? (
           <>
             <h2>Primeiro Acesso</h2>
-            <div className="form-group">
-              <label htmlFor="email">Email:</label>
-              <input
-                type="email"
-                id="email"
-                placeholder="Digite seu email"
-                value={email} // Bind do estado
-                onChange={(e) => setEmail(e.target.value)} // Atualiza o estado
-                required
-              />
-            </div>
-            <button onClick={handleRegister}>Cadastrar</button>
+            <form onSubmit={handleRegister}>
+              <div className="form-group">
+                <label htmlFor="nome">Nome:</label>
+                <input
+                  type="text"
+                  id="nome"
+                  placeholder="Digite seu nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="telefone">Telefone:</label>
+                <input
+                  type="tel"
+                  id="telefone"
+                  placeholder="Digite seu telefone"
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="email">Email:</label>
+                <input
+                  type="email"
+                  id="email"
+                  placeholder="Digite seu email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="password">Senha:</label>
+                <input
+                  type="password"
+                  id="password"
+                  placeholder="Digite sua senha"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit">Cadastrar</button>
+            </form>
             <button onClick={() => setIsRegister(false)}>
               Voltar ao Login
             </button>
@@ -109,8 +137,9 @@ const LoginPage = () => {
                 type="text"
                 id="username"
                 placeholder="Digite seu usuário"
-                value={email} // Bind do estado
-                onChange={(e) => setEmail(e.target.value)} // Atualiza o estado
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required // Adicionado para garantir que o campo seja preenchido
               />
             </div>
             <div className="form-group">
@@ -119,8 +148,9 @@ const LoginPage = () => {
                 type="password"
                 id="password"
                 placeholder="Digite sua senha"
-                value={password} // Bind do estado
-                onChange={(e) => setPassword(e.target.value)} // Atualiza o estado
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
             <button onClick={handleLogin}>Entrar</button>

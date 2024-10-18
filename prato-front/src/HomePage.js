@@ -1,7 +1,9 @@
+// src/HomePage.js
 import React, { useEffect, useRef, useState } from "react";
 import "./style.css";
 import Chart from "chart.js/auto";
 import API_BASE_URL from "./config";
+
 
 const HomePage = () => {
   // Refs para os gráficos
@@ -14,6 +16,7 @@ const HomePage = () => {
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isTutorModalOpen, setIsTutorModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const [userEmail, setUserEmail] = useState("");
   const [petInfo, setPetInfo] = useState({
@@ -26,33 +29,38 @@ const HomePage = () => {
 
   const [tutorInfoForm, setTutorInfoForm] = useState({
     nome: "",
-    email: "",
     telefone: "",
   });
 
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  const [error, setError] = useState(null); // Novo estado para erros
+
   // Função para buscar o perfil do tutor
   const fetchTutorProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/tutors/me`, {
+      console.log('Token:', token); // Verifique se o token está correto
+      const response = await fetch(`${API_BASE_URL}/api/users/me`, { // Rota correta
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-
+  
       if (response.ok) {
         const data = await response.json();
-        setTutorInfo(data);
+        setTutorInfo(data); // data agora inclui { user, tutor, pets }
       } else {
-        console.error('Erro ao buscar perfil:', await response.json());
+        const errorData = await response.json();
+        console.error('Erro ao buscar perfil:', errorData);
+        setError(errorData.message || 'Erro ao buscar perfil');
       }
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
+      setError('Erro ao buscar perfil');
     } finally {
       setLoading(false);
     }
@@ -69,6 +77,8 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
+    if (!tutorInfo) return;
+
     // Limpeza: destruir os gráficos se eles já existirem
     if (graficoRef.current) {
       graficoRef.current.destroy();
@@ -143,7 +153,7 @@ const HomePage = () => {
         graficoResumoRef.current.destroy();
       }
     };
-  }, []);
+  }, [tutorInfo]); // Adicione tutorInfo como dependência para recriar os gráficos quando os dados forem atualizados
 
   // Funções para abrir e fechar os modais
   const abrirFormulario = (tipo) => {
@@ -163,63 +173,88 @@ const HomePage = () => {
   };
 
   // Handlers de formulários
-  const handlePetRegistration = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch(`${API_BASE_URL}/pets`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(petInfo),
-      });
 
-      if (response.ok) {
-        alert("Pet cadastrado com sucesso!");
-        setPetInfo({ nome: "", raca: "", nascimento: "", peso: "", pesoRacao: "" });
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message);
-      }
-    } catch (error) {
-      alert("Erro ao tentar cadastrar o pet.");
-      console.error(error);
+  // Handle Pet Registration com form-data para upload de imagem
+// src/HomePage.js
+const handlePetRegistration = async (e) => {
+  e.preventDefault();
+  try {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append("nome", petInfo.nome);
+    formData.append("raca", petInfo.raca);
+    formData.append("nascimento", petInfo.nascimento);
+    formData.append("peso", petInfo.peso);
+    formData.append("pesoRacao", petInfo.pesoRacao);
+    if (selectedImage) {
+      formData.append("imagem", selectedImage);
     }
-  };
 
+    const response = await fetch(`${API_BASE_URL}/api/pets`, { // Rota correta
+      method: "POST",
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // 'Content-Type': 'multipart/form-data', // NÃO DEFINIR MANUALMENTE; o browser cuidará disso
+      },
+      body: formData,
+    });
+
+    if (response.ok) {
+      alert("Pet cadastrado com sucesso!");
+      setPetInfo({ nome: "", raca: "", nascimento: "", peso: "", pesoRacao: "" });
+      setSelectedImage(null); // Resetar a imagem selecionada
+      fetchTutorProfile(); // Atualizar as informações após cadastrar um pet
+    } else {
+      const errorData = await response.json();
+      alert(errorData.message);
+    }
+  } catch (error) {
+    alert("Erro ao tentar cadastrar o pet.");
+    console.error(error);
+  }
+};
+
+
+  // Handle Tutor Registration (Atualização)
   const handleTutorRegistration = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/tutors`, {
-        method: "POST",
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/me`, { // Alinhado com backend
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(tutorInfoForm),
       });
 
       if (response.ok) {
-        alert("Tutor cadastrado com sucesso!");
-        setTutorInfoForm({ nome: "", email: "", telefone: "" });
+        alert("Informações do tutor atualizadas com sucesso!");
+        setTutorInfoForm({ nome: "", telefone: "" });
+        fetchTutorProfile(); // Atualizar as informações após atualizar o tutor
       } else {
         const errorData = await response.json();
         alert(errorData.message);
       }
     } catch (error) {
-      alert("Erro ao tentar cadastrar o tutor.");
+      alert("Erro ao tentar atualizar o tutor.");
       console.error(error);
     }
   };
 
+  // Handle Change Password
   const handleChangePassword = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/change-password`, {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, { // Rota correta
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`, // Adicionado para autenticação
         },
-        body: JSON.stringify({ email: userEmail, oldPassword, newPassword }),
+        body: JSON.stringify({ oldPassword, newPassword }), // Removido email
       });
 
       if (response.ok) {
@@ -243,216 +278,236 @@ const HomePage = () => {
     return <p>Carregando...</p>;
   }
 
+  if (error) {
+    return <p className="error-message">{error}</p>;
+  }
+
   if (!tutorInfo) {
     return <p>Nenhuma informação encontrada</p>;
   }
 
-  return (
-    <div className="home-page">
-      <header className="cabecalho">
-        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Logo Pet Tech" />
-        <h2>Bem-vindo, {tutorInfo ? tutorInfo.nome : "Usuário"}!</h2>
-      </header>
-      <main className="main-content">
-        <div className="container">
-          <aside aria-label="Perfil do Pet">
+  // src/HomePage.js
+return (
+  <div className="home-page">
+    <header className="cabecalho">
+      <img src={`${API_BASE_URL}/uploads/logo.png`} alt="Logo Pet Tech" /> {/* Ajuste para buscar logo do backend */}
+      <h2>Bem-vindo, {tutorInfo.tutor.nome || "Usuário"}!</h2>
+    </header>
+    <main className="main-content">
+      <div className="container">
+        <aside aria-label="Perfil do Pet">
+          {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
+            <img
+              src={`${API_BASE_URL}/uploads/${tutorInfo.pets[0].imagem}`} // Fetch da imagem do backend
+              alt={`Foto de ${tutorInfo.pets[0].nome}`}
+            />
+          ) : (
             <img
               src={`${process.env.PUBLIC_URL}/pet.jpg`}
-              alt="Foto de Mimi, o Labrador"
+              alt="Nenhum Pet"
             />
-            <h2>Mimi</h2>
-            <div className="info-pet">
-              <section>
-                <h3>Seus Pets:</h3>
-                <ul>
-                  {tutorInfo.pets.map((pet) => (
+          )}
+          <h2>{tutorInfo.pets && tutorInfo.pets.length > 0 ? tutorInfo.pets[0].nome : "Nenhum Pet"}</h2>
+          <div className="info-pet">
+            <section>
+              <h3>Seus Pets:</h3>
+              <ul>
+                {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
+                  tutorInfo.pets.map((pet) => (
                     <li key={pet._id}>
                       <p>Nome: {pet.nome}</p>
                       <p>Raça: {pet.raca}</p>
                       <p>Peso: {pet.peso} kg</p>
                     </li>
-                  ))}
-                </ul>
-              </section>
-              <p>
-                <i className="fas fa-paw"></i> Raça: Labrador
-              </p>
-              <p>
-                <i className="fas fa-birthday-cake"></i> Nascimento: 01/01/2020
-              </p>
-              <p>
-                <i className="fas fa-weight"></i> Peso Atual: 12kg
-              </p>
-            </div>
-            <h3>Consumo Diário de Ração</h3>
-            <p>
-              Total consumido: <strong>5/25kg</strong>
-            </p>
-            <div className="barra-habilidade">
-              <span style={{ width: "20%" }}></span>
-            </div>
-            <div className="grafico-resumo grafico-container">
-              <h3>Resumo Mensal do Consumo</h3>
-              <canvas id="graficoResumo" width="400" height="200"></canvas>
-            </div>
-          </aside>
-          <section>
-            <h2>Relatórios Semanais</h2>
-            <div className="grafico-container">
-              <canvas id="grafico" width="400" height="200"></canvas>
-            </div>
+                  ))
+                ) : (
+                  <p>Nenhum pet cadastrado</p>
+                )}
+              </ul>
+            </section>
+            {tutorInfo.pets && tutorInfo.pets.length > 0 && (
+              <>
+                <p>
+                  <i className="fas fa-paw"></i> Raça: {tutorInfo.pets[0].raca}
+                </p>
+                <p>
+                  <i className="fas fa-birthday-cake"></i> Nascimento: {new Date(tutorInfo.pets[0].nascimento).toLocaleDateString()}
+                </p>
+                <p>
+                  <i className="fas fa-weight"></i> Peso Atual: {`${tutorInfo.pets[0].peso} kg`}
+                </p>
+              </>
+            )}
+          </div>
+          <h3>Consumo Diário de Ração</h3>
+          <p>
+            Total consumido: <strong>5/25kg</strong>
+          </p>
+          <div className="barra-habilidade">
+            <span style={{ width: "20%" }}></span>
+          </div>
+          <div className="grafico-resumo grafico-container">
+            <h3>Resumo Mensal do Consumo</h3>
+            <canvas id="graficoResumo" width="400" height="200"></canvas>
+          </div>
+        </aside>
+        <section>
+          <h2>Relatórios Semanais</h2>
+          <div className="grafico-container">
+            <canvas id="grafico" width="400" height="200"></canvas>
+          </div>
 
-            <div className="formulario-botoes">
-              <button
-                className="botoes"
-                onClick={() => abrirFormulario("cadastroPetModal")}
-              >
-                Cadastrar Pet
-              </button>
-              <button
-                className="botoes"
-                onClick={() => abrirFormulario("cadastroTutorModal")}
-              >
-                Cadastrar Tutor
-              </button>
-              <button
-                className="botoes"
-                onClick={() => abrirFormulario("changePassword")}
-              >
-                Trocar Senha
-              </button>
-            </div>
-          </section>
-        </div>
-      </main>
-
-      {/* Modal de Cadastro do Pet */}
-      <div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
-        <div className="modal-content">
-          <button onClick={() => fecharFormulario('cadastroPetModal')}>X</button>
-          <h3>Cadastro do Pet</h3>
-          <form onSubmit={handlePetRegistration}>
-            <input
-              type="text"
-              placeholder="Nome do Pet"
-              value={petInfo.nome}
-              onChange={(e) => setPetInfo({ ...petInfo, nome: e.target.value })}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Raça"
-              value={petInfo.raca}
-              onChange={(e) => setPetInfo({ ...petInfo, raca: e.target.value })}
-              required
-            />
-            <input
-              type="date"
-              placeholder="Data de Nascimento"
-              value={petInfo.nascimento}
-              onChange={(e) => setPetInfo({ ...petInfo, nascimento: e.target.value })}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Peso (kg)"
-              value={petInfo.peso}
-              onChange={(e) => setPetInfo({ ...petInfo, peso: e.target.value })}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Quantidade de Ração (kg)"
-              value={petInfo.pesoRacao}
-              onChange={(e) => setPetInfo({ ...petInfo, pesoRacao: e.target.value })}
-              required
-            />
-            <button type="submit">Cadastrar Pet</button>
-          </form>
-        </div>
-      </div>
-
-      {/* Modal de Cadastro do Tutor */}
-      <div className="modal" style={{ display: isTutorModalOpen ? 'flex' : 'none' }}>
-        <div className="modal-content">
-          <button onClick={() => fecharFormulario('cadastroTutorModal')}>X</button>
-          <h3>Cadastro do Tutor</h3>
-          <form onSubmit={handleTutorRegistration}>
-            <input
-              type="text"
-              placeholder="Nome"
-              value={tutorInfoForm.nome}
-              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, nome: e.target.value })}
-              required
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={tutorInfoForm.email}
-              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, email: e.target.value })}
-              required
-            />
-            <input
-              type="tel"
-              placeholder="Telefone"
-              value={tutorInfoForm.telefone}
-              onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, telefone: e.target.value })}
-              required
-            />
-            <button type="submit">Cadastrar Tutor</button>
-          </form>
-        </div>
-      </div>
-
-      {/* Modal de Troca de Senha */}
-      <div
-        id="changePasswordModal"
-        className="modal"
-        style={{ display: isChangePasswordOpen ? "flex" : "none" }}
-      >
-        <div className="modal-content formulario">
-          <button
-            className="close-modal"
-            onClick={() => fecharFormulario("changePassword")}
-          >
-            X
-          </button>
-          <h3>Trocar Senha</h3>
-          <form onSubmit={handleChangePassword}>
-            <label htmlFor="oldPassword">Senha Atual:</label>
-            <input
-              type="password"
-              id="oldPassword"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              placeholder="Digite sua senha atual"
-              required
-            />
-            <label htmlFor="newPassword">Nova Senha:</label>
-            <input
-              type="password"
-              id="newPassword"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Digite sua nova senha"
-              required
-            />
-            <button className="botoes-inside" type="submit">
-              Alterar Senha
+          <div className="formulario-botoes">
+            <button
+              className="botoes"
+              onClick={() => abrirFormulario("cadastroPetModal")}
+            >
+              Cadastrar Pet
             </button>
-          </form>
-        </div>
+            <button
+              className="botoes"
+              onClick={() => abrirFormulario("cadastroTutorModal")}
+            >
+              Atualizar Tutor
+            </button>
+            <button
+              className="botoes"
+              onClick={() => abrirFormulario("changePassword")}
+            >
+              Trocar Senha
+            </button>
+          </div>
+        </section>
       </div>
+    </main>
 
-      <footer>
-        <p>
-          Contato: contato@pettracker.com <br />
-          Telefone: (11) 12345-6789 <br />
-          &copy; 2024 Pet Tech Tracker
-        </p>
-      </footer>
+    {/* Modal de Cadastro do Pet */}
+    <div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
+      <div className="modal-content">
+        <button onClick={() => fecharFormulario('cadastroPetModal')}>X</button>
+        <h3>Cadastro do Pet</h3>
+        <form onSubmit={handlePetRegistration}>
+          <input
+            type="text"
+            placeholder="Nome do Pet"
+            value={petInfo.nome}
+            onChange={(e) => setPetInfo({ ...petInfo, nome: e.target.value })}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Raça"
+            value={petInfo.raca}
+            onChange={(e) => setPetInfo({ ...petInfo, raca: e.target.value })}
+            required
+          />
+          <input
+            type="date"
+            placeholder="Data de Nascimento"
+            value={petInfo.nascimento}
+            onChange={(e) => setPetInfo({ ...petInfo, nascimento: e.target.value })}
+            required
+          />
+          <input
+            type="number"
+            placeholder="Peso (kg)"
+            value={petInfo.peso}
+            onChange={(e) => setPetInfo({ ...petInfo, peso: e.target.value })}
+            required
+          />
+          <input
+            type="number"
+            placeholder="Quantidade de Ração (kg)"
+            value={petInfo.pesoRacao}
+            onChange={(e) => setPetInfo({ ...petInfo, pesoRacao: e.target.value })}
+            required
+          />
+          {/* Campo para upload de imagem */}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setSelectedImage(e.target.files[0])}
+          />
+          <button type="submit">Cadastrar Pet</button>
+        </form>
+      </div>
     </div>
-  );
+
+    {/* Modal de Atualização do Tutor */}
+    <div className="modal" style={{ display: isTutorModalOpen ? 'flex' : 'none' }}>
+      <div className="modal-content">
+        <button onClick={() => fecharFormulario('cadastroTutorModal')}>X</button>
+        <h3>Atualizar Informações do Tutor</h3>
+        <form onSubmit={handleTutorRegistration}>
+          <input
+            type="text"
+            placeholder="Nome"
+            value={tutorInfoForm.nome}
+            onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, nome: e.target.value })}
+            required
+          />
+          <input
+            type="tel"
+            placeholder="Telefone"
+            value={tutorInfoForm.telefone}
+            onChange={(e) => setTutorInfoForm({ ...tutorInfoForm, telefone: e.target.value })}
+            required
+          />
+          <button type="submit">Atualizar Tutor</button>
+        </form>
+      </div>
+    </div>
+
+    {/* Modal de Troca de Senha */}
+    <div
+      id="changePasswordModal"
+      className="modal"
+      style={{ display: isChangePasswordOpen ? "flex" : "none" }}
+    >
+      <div className="modal-content formulario">
+        <button
+          className="close-modal"
+          onClick={() => fecharFormulario("changePassword")}
+        >
+          X
+        </button>
+        <h3>Trocar Senha</h3>
+        <form onSubmit={handleChangePassword}>
+          <label htmlFor="oldPassword">Senha Atual:</label>
+          <input
+            type="password"
+            id="oldPassword"
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
+            placeholder="Digite sua senha atual"
+            required
+          />
+          <label htmlFor="newPassword">Nova Senha:</label>
+          <input
+            type="password"
+            id="newPassword"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Digite sua nova senha"
+            required
+          />
+          <button className="botoes-inside" type="submit">
+            Alterar Senha
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        Contato: contato@pettracker.com <br />
+        Telefone: (11) 12345-6789 <br />
+        &copy; 2024 Pet Tech Tracker
+      </p>
+    </footer>
+  </div>
+);
+
 };
 
 export default HomePage;
