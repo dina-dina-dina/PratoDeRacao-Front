@@ -12,6 +12,7 @@ const LoginPage = () => {
   const [nome, setNome] = useState(""); // Novo estado para nome
   const [telefone, setTelefone] = useState(""); // Novo estado para telefone
   const [error, setError] = useState(""); // Novo estado para mensagens de erro
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     try {
@@ -70,7 +71,7 @@ const LoginPage = () => {
   return (
     <div className="login-page">
       <div className="logo-container">
-        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Pet Tech Logo" />
+        <img src={`${API_BASE_URL}/uploads/logo.png`} alt="Pet Tech Logo" />
       </div>
       <div className="login-container">
         {error && <p className="error-message">{error}</p>}
@@ -112,16 +113,25 @@ const LoginPage = () => {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="password">Senha:</label>
-                <input
-                  type="password"
-                  id="password"
-                  placeholder="Digite sua senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+  <label htmlFor="password">Senha:</label>
+  <div className="password-container">
+    <input
+      type={showPassword ? "text" : "password"} // Alterna entre text e password
+      id="password"
+      placeholder="Digite sua senha"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="toggle-password"
+    >
+      {showPassword ? "Ocultar" : "Mostrar"}
+    </button>
+  </div>
+</div>
               <button type="submit">Cadastrar</button>
             </form>
             <button onClick={() => setIsRegister(false)}>
@@ -143,16 +153,25 @@ const LoginPage = () => {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Senha:</label>
-              <input
-                type="password"
-                id="password"
-                placeholder="Digite sua senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+  <label htmlFor="password">Senha:</label>
+  <div className="password-container">
+    <input
+      type={showPassword ? "text" : "password"} // Alterna entre text e password
+      id="password"
+      placeholder="Digite sua senha"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="toggle-password"
+    >
+      {showPassword ? "Ocultar" : "Mostrar"}
+    </button>
+  </div>
+</div>
             <button onClick={handleLogin}>Entrar</button>
             <button onClick={() => setIsRegister(true)}>Primeiro Acesso</button>
           </>
