@@ -2,12 +2,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./style.css";
 import Chart from "chart.js/auto";
+import 'chartjs-adapter-date-fns';
 import API_BASE_URL from "./config";
 
 const HomePage = () => {
   // Refs para os gráficos
-  const graficoRef = useRef(null);
-  const graficoResumoRef = useRef(null);
+  const graficoPesoAtualRef = useRef(null);
+  const graficoSemanalRef = useRef(null);
 
   // Estados
   const [tutorInfo, setTutorInfo] = useState(null);
@@ -23,7 +24,7 @@ const HomePage = () => {
     nascimento: "",
     peso: "",
     pesoRacao: "",
-    id: "", // Adicionado para identificar o pet na atualização
+    id: "",
   });
 
   const [tutorInfoForm, setTutorInfoForm] = useState({
@@ -34,15 +35,21 @@ const HomePage = () => {
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  const [selectedImage, setSelectedImage] = useState(null); // Adicionado para manipular a imagem selecionada
-  const [error, setError] = useState(null); // Novo estado para erros
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Estados para os dados de peso
+  const [latestWeightData, setLatestWeightData] = useState(null);
+  const [weeklyWeightData, setWeeklyWeightData] = useState([]);
+
+  // Capacidade máxima do prato (em gramas)
+  const capacidadeMaxima = 500; // Ajuste conforme necessário
 
   // Função para buscar o perfil do tutor
   const fetchTutorProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Token:', token); // Verifique se o token está correto
-      const response = await fetch(`${API_BASE_URL}/api/users/me`, { // Alinhado com backend
+      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -52,24 +59,54 @@ const HomePage = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Dados do perfil atualizados:', data); // Adicionado para depuração
-        setTutorInfo(data); // data agora inclui { user, tutor, pets }
+        setTutorInfo(data);
       } else {
         const errorData = await response.json();
-        console.error('Erro ao buscar perfil:', errorData);
         setError(errorData.message || 'Erro ao buscar perfil');
       }
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
       setError('Erro ao buscar perfil');
     } finally {
       setLoading(false);
     }
   };
 
+  // Função para buscar os dados de peso
+  const fetchWeightData = async () => {
+    try {
+      // Obter o peso atual
+      const latestResponse = await fetch(`${API_BASE_URL}/api/weights/latest`);
+      if (latestResponse.ok) {
+        const latestData = await latestResponse.json();
+        setLatestWeightData(latestData);
+      } else {
+        console.error('Erro ao buscar o peso atual:', latestResponse.statusText);
+      }
+
+      // Obter os dados da última semana
+      const recentResponse = await fetch(`${API_BASE_URL}/api/weights/recent`);
+      if (recentResponse.ok) {
+        const recentData = await recentResponse.json();
+        setWeeklyWeightData(recentData);
+      } else {
+        console.error('Erro ao buscar os dados semanais:', recentResponse.statusText);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar os dados de peso:', error);
+    }
+  };
+
   // Hooks useEffect
   useEffect(() => {
     fetchTutorProfile();
+    fetchWeightData();
+
+    // Atualizar o peso atual a cada segundo
+    const weightIntervalId = setInterval(() => {
+      fetchWeightData();
+    }, 1000);
+
+    return () => clearInterval(weightIntervalId);
   }, []);
 
   useEffect(() => {
@@ -80,58 +117,80 @@ const HomePage = () => {
   useEffect(() => {
     if (!tutorInfo) return;
 
-    // Limpeza: destruir os gráficos se eles já existirem
-    if (graficoRef.current) {
-      graficoRef.current.destroy();
+    // Limpeza: destruir os gráficos existentes se eles já existirem
+    if (graficoPesoAtualRef.current) {
+      graficoPesoAtualRef.current.destroy();
     }
-    if (graficoResumoRef.current) {
-      graficoResumoRef.current.destroy();
+    if (graficoSemanalRef.current) {
+      graficoSemanalRef.current.destroy();
     }
 
     // Obter o contexto dos elementos canvas
-    const ctx = document.getElementById("grafico");
-    const ctxResumo = document.getElementById("graficoResumo");
+    const ctxPesoAtual = document.getElementById("graficoPesoAtual");
+    const ctxSemanal = document.getElementById("graficoSemanal");
 
-    // Verifica se os elementos canvas estão no DOM antes de continuar
-    if (ctx && ctxResumo) {
-      const ctxGraph = ctx.getContext("2d");
-      const ctxResumoGraph = ctxResumo.getContext("2d");
+    if (ctxPesoAtual && ctxSemanal) {
+      // Gráfico de Peso Atual
+      const ctxPesoAtualGraph = ctxPesoAtual.getContext("2d");
+      const pesoAtual = latestWeightData ? latestWeightData.totalWeight : 0;
 
-      // Criação do gráfico semanal
-      graficoRef.current = new Chart(ctxGraph, {
-        type: "bar",
+      graficoPesoAtualRef.current = new Chart(ctxPesoAtualGraph, {
+        type: "doughnut",
         data: {
-          labels: ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"],
+          labels: ["Ração no Prato", "Capacidade Restante"],
           datasets: [
             {
-              label: "Consumo de Ração (g)",
-              data: [200, 180, 220, 190, 170, 160, 210],
-              backgroundColor: "#0C3F8C",
+              data: [pesoAtual, capacidadeMaxima - pesoAtual],
+              backgroundColor: ["#0C3F8C", "#CCCCCC"],
             },
           ],
         },
         options: {
-          scales: {
-            y: {
-              beginAtZero: true,
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
             },
           },
         },
       });
 
-      // Criação do gráfico mensal
-      graficoResumoRef.current = new Chart(ctxResumoGraph, {
-        type: "line",
+      // Processar os dados semanais
+      const diasDaSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      let consumoPorDia = [0, 0, 0, 0, 0, 0, 0];
+
+      // Ordenar os dados por timestamp
+      const sortedData = [...weeklyWeightData].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      // Calcular o consumo diário
+      for (let i = 1; i < sortedData.length; i++) {
+        const dataAtual = sortedData[i];
+        const dataAnterior = sortedData[i - 1];
+
+        const pesoAtual = dataAtual.totalWeight;
+        const pesoAnterior = dataAnterior.totalWeight;
+
+        const consumo = pesoAnterior - pesoAtual;
+
+        if (consumo > 0) {
+          const date = new Date(dataAtual.timestamp);
+          const dia = date.getDay();
+          consumoPorDia[dia] += consumo;
+        }
+      }
+
+      // Gráfico de Variação Semanal
+      const ctxSemanalGraph = ctxSemanal.getContext("2d");
+      graficoSemanalRef.current = new Chart(ctxSemanalGraph, {
+        type: "bar",
         data: {
-          labels: ["Semana 1", "Semana 2", "Semana 3", "Semana 4"],
+          labels: diasDaSemana,
           datasets: [
             {
-              label: "Consumo Semanal (kg)",
-              data: [6.2, 5.8, 6.5, 6.0],
-              backgroundColor: "rgba(12, 63, 140, 0.5)",
-              borderColor: "#0C3F8C",
-              borderWidth: 2,
-              fill: true,
+              label: "Consumo Diário (g)",
+              data: consumoPorDia,
+              backgroundColor: "#0C3F8C",
             },
           ],
         },
@@ -147,14 +206,14 @@ const HomePage = () => {
 
     // Cleanup: destruir os gráficos quando o componente for desmontado
     return () => {
-      if (graficoRef.current) {
-        graficoRef.current.destroy();
+      if (graficoPesoAtualRef.current) {
+        graficoPesoAtualRef.current.destroy();
       }
-      if (graficoResumoRef.current) {
-        graficoResumoRef.current.destroy();
+      if (graficoSemanalRef.current) {
+        graficoSemanalRef.current.destroy();
       }
     };
-  }, [tutorInfo]); // Adicione tutorInfo como dependência para recriar os gráficos quando os dados forem atualizados
+  }, [tutorInfo, latestWeightData, weeklyWeightData]);
 
   // Funções para abrir e fechar os modais
   const abrirFormulario = (tipo) => {
@@ -174,12 +233,9 @@ const HomePage = () => {
   };
 
   // Handlers de formulários
-
-  // Handle Pet Registration com form-data para upload de imagem
   const handlePetRegistration = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append("nome", petInfo.nome);
       formData.append("raca", petInfo.raca);
@@ -193,7 +249,7 @@ const HomePage = () => {
       const response = await fetch(`${API_BASE_URL}/api/pets`, { // Rota correta
         method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           // 'Content-Type': 'multipart/form-data', // NÃO DEFINIR MANUALMENTE; o browser cuidará disso
         },
         body: formData,
@@ -215,11 +271,9 @@ const HomePage = () => {
     }
   };
 
-  // Handle Pet Update com form-data para upload de imagem
   const handlePetUpdate = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
       formData.append("nome", petInfo.nome);
       formData.append("raca", petInfo.raca);
@@ -233,7 +287,7 @@ const HomePage = () => {
       const response = await fetch(`${API_BASE_URL}/api/pets/${petInfo.id}`, { // Rota correta com ID do pet
         method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           // 'Content-Type': 'multipart/form-data', // NÃO DEFINIR MANUALMENTE
         },
         body: formData,
@@ -244,7 +298,7 @@ const HomePage = () => {
         setPetInfo({ nome: "", raca: "", nascimento: "", peso: "", pesoRacao: "", id: "" });
         setSelectedImage(null); // Resetar a imagem selecionada
         fetchTutorProfile(); // Atualizar as informações após atualizar o pet
-        fecharFormulario("atualizarPetModal"); // Fechar o modal após atualização
+        fecharFormulario("cadastroPetModal"); // Fechar o modal após atualização
       } else {
         const errorData = await response.json();
         alert(errorData.message);
@@ -255,16 +309,14 @@ const HomePage = () => {
     }
   };
 
-  // Handle Tutor Registration (Atualização)
   const handleTutorRegistration = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/users/me`, { // Alinhado com backend
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(tutorInfoForm),
       });
@@ -284,18 +336,16 @@ const HomePage = () => {
     }
   };
 
-  // Handle Change Password
   const handleChangePassword = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, { // Rota correta
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`, // Adicionado para autenticação
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({ oldPassword, newPassword }), // Removido email
+        body: JSON.stringify({ oldPassword, newPassword }),
       });
 
       if (response.ok) {
@@ -343,7 +393,7 @@ const HomePage = () => {
   return (
     <div className="home-page">
       <header className="cabecalho">
-        <img src={`${API_BASE_URL}/uploads/logo.png`} alt="Logo Pet Tech" /> {/* Ajuste para buscar logo do backend */}
+        <img src={`${API_BASE_URL}/uploads/logo.png`} alt="Logo Pet Tech" />
         <h2>Bem-vindo, {tutorInfo.tutor.nome || "Usuário"}!</h2>
       </header>
       <main className="main-content">
@@ -351,7 +401,7 @@ const HomePage = () => {
           <aside aria-label="Perfil do Pet">
             {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
               <img
-                src={`${API_BASE_URL}/uploads/${tutorInfo.pets[0].imagem}`} // Fetch da imagem do backend
+                src={`${API_BASE_URL}/uploads/${tutorInfo.pets[0].imagem}`}
                 alt={`Foto de ${tutorInfo.pets[0].nome}`}
               />
             ) : (
@@ -380,22 +430,17 @@ const HomePage = () => {
                 </ul>
               </section>
             </div>
-            <h3>Consumo Diário de Ração</h3>
-            <p>
-              Total consumido: <strong>5/25kg</strong>
-            </p>
-            <div className="barra-habilidade">
-              <span style={{ width: "20%" }}></span>
-            </div>
-            <div className="grafico-resumo grafico-container">
-              <h3>Resumo Mensal do Consumo</h3>
-              <canvas id="graficoResumo" width="400" height="200"></canvas>
+
+            <h3>Peso Atual da Ração</h3>
+            <div className="grafico-container" style={{ height: '200px' }}>
+              <canvas id="graficoPesoAtual"></canvas>
             </div>
           </aside>
+
           <section>
-            <h2>Relatórios Semanais</h2>
+            <h2>Variação Semanal de Consumo</h2>
             <div className="grafico-container">
-              <canvas id="grafico" width="400" height="200"></canvas>
+              <canvas id="graficoSemanal" width="400" height="200"></canvas>
             </div>
 
             <div className="formulario-botoes">
@@ -422,8 +467,8 @@ const HomePage = () => {
         </div>
       </main>
 
-      {/* Modal de Cadastro do Pet */}
-      <div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
+{/* Modal de Cadastro do Pet */}
+<div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
         <div className="modal-content">
           <button onClick={() => fecharFormulario('cadastroPetModal')}>X</button>
           <h3>{petInfo.id ? "Atualizar Pet" : "Cadastrar Pet"}</h3>

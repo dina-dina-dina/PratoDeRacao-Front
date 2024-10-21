@@ -93,6 +93,11 @@ aside h2 {
   box-shadow: -3px 3px 2px #0c3f8c; /* Borda superior azul escura para destaque */
 }
 
+.grafico-container canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
 .main-content {
   background-image: url(../public/fundo2.png);
   background-size: 75px;
