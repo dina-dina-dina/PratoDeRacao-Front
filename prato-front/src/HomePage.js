@@ -3,12 +3,17 @@ import React, { useEffect, useRef, useState } from "react";
 import "./style.css";
 import Chart from "chart.js/auto";
 import 'chartjs-adapter-date-fns';
+import { format, parseISO, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import API_BASE_URL from "./config";
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+
+// Registrar o plugin
+Chart.register(ChartDataLabels);
 
 const HomePage = () => {
   // Refs para os gráficos
   const graficoPesoAtualRef = useRef(null);
-  const graficoSemanalRef = useRef(null);
+  const graficoVariacaoDiaRef = useRef(null);
 
   // Estados
   const [tutorInfo, setTutorInfo] = useState(null);
@@ -16,7 +21,8 @@ const HomePage = () => {
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isTutorModalOpen, setIsTutorModalOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-
+  const [latestWeightData, setLatestWeightData] = useState(null);
+  const [weightData, setWeightData] = useState([]); // Todos os dados de peso
   const [userEmail, setUserEmail] = useState("");
   const [petInfo, setPetInfo] = useState({
     nome: "",
@@ -39,7 +45,6 @@ const HomePage = () => {
   const [error, setError] = useState(null);
 
   // Estados para os dados de peso
-  const [latestWeightData, setLatestWeightData] = useState(null);
   const [weeklyWeightData, setWeeklyWeightData] = useState([]);
 
   // Capacidade máxima do prato (em gramas)
@@ -83,30 +88,31 @@ const HomePage = () => {
         console.error('Erro ao buscar o peso atual:', latestResponse.statusText);
       }
 
-      // Obter os dados da última semana
+      // Obter todos os dados dos últimos 7 dias
       const recentResponse = await fetch(`${API_BASE_URL}/api/weights/recent`);
       if (recentResponse.ok) {
         const recentData = await recentResponse.json();
-        setWeeklyWeightData(recentData);
+        setWeightData(recentData);
       } else {
-        console.error('Erro ao buscar os dados semanais:', recentResponse.statusText);
+        console.error('Erro ao buscar os dados de peso:', recentResponse.statusText);
       }
     } catch (error) {
       console.error('Erro ao buscar os dados de peso:', error);
     }
   };
 
+
   // Hooks useEffect
   useEffect(() => {
     fetchTutorProfile();
     fetchWeightData();
 
-    // Atualizar o peso atual a cada segundo
-    const weightIntervalId = setInterval(() => {
+    // Atualizar os dados a cada 5 segundos
+    const intervalId = setInterval(() => {
       fetchWeightData();
-    }, 1000);
+    }, 5000);
 
-    return () => clearInterval(weightIntervalId);
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -115,21 +121,22 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
+    if (!tutorInfo || !weightData.length) return;
     if (!tutorInfo) return;
 
     // Limpeza: destruir os gráficos existentes se eles já existirem
     if (graficoPesoAtualRef.current) {
       graficoPesoAtualRef.current.destroy();
     }
-    if (graficoSemanalRef.current) {
-      graficoSemanalRef.current.destroy();
+    if (graficoVariacaoDiaRef.current) {
+      graficoVariacaoDiaRef.current.destroy();
     }
 
     // Obter o contexto dos elementos canvas
     const ctxPesoAtual = document.getElementById("graficoPesoAtual");
-    const ctxSemanal = document.getElementById("graficoSemanal");
+    const ctxVariacaoDia = document.getElementById("graficoVariacaoDia");
 
-    if (ctxPesoAtual && ctxSemanal) {
+    if (ctxPesoAtual && ctxVariacaoDia) {
       // Gráfico de Peso Atual
       const ctxPesoAtualGraph = ctxPesoAtual.getContext("2d");
       const pesoAtual = latestWeightData ? latestWeightData.totalWeight : 0;
@@ -152,52 +159,81 @@ const HomePage = () => {
             legend: {
               position: "bottom",
             },
+            datalabels: {
+              display: true,
+              formatter: function(value, context) {
+                if (context.dataIndex === 0) {
+                  return `${pesoAtual.toFixed(2)} g`;
+                } else {
+                  return '';
+                }
+              },
+              color: '#000',
+              font: {
+                weight: 'bold',
+                size: 16,
+              },
+            },
           },
         },
       });
 
-      // Processar os dados semanais
-      const diasDaSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-      let consumoPorDia = [0, 0, 0, 0, 0, 0, 0];
+      // Filtrar dados para o dia atual
+      const hoje = new Date();
+      const inicioDoDia = startOfDay(hoje);
+      const fimDoDia = endOfDay(hoje);
 
-      // Ordenar os dados por timestamp
-      const sortedData = [...weeklyWeightData].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const dadosDiaAtual = weightData.filter((dataPoint) => {
+        const timestamp = new Date(dataPoint.timestamp);
+        return timestamp >= inicioDoDia && timestamp <= fimDoDia;
+      });
 
-      // Calcular o consumo diário
-      for (let i = 1; i < sortedData.length; i++) {
-        const dataAtual = sortedData[i];
-        const dataAnterior = sortedData[i - 1];
+      // Preparar dados para o gráfico de variação diária
+      const labelsDia = dadosDiaAtual.map((dataPoint) => {
+        const date = new Date(dataPoint.timestamp);
+        return format(date, 'HH:mm:ss');
+      });
 
-        const pesoAtual = dataAtual.totalWeight;
-        const pesoAnterior = dataAnterior.totalWeight;
+      const pesosDia = dadosDiaAtual.map((dataPoint) => dataPoint.totalWeight);
 
-        const consumo = pesoAnterior - pesoAtual;
-
-        if (consumo > 0) {
-          const date = new Date(dataAtual.timestamp);
-          const dia = date.getDay();
-          consumoPorDia[dia] += consumo;
-        }
-      }
-
-      // Gráfico de Variação Semanal
-      const ctxSemanalGraph = ctxSemanal.getContext("2d");
-      graficoSemanalRef.current = new Chart(ctxSemanalGraph, {
-        type: "bar",
+      // Gráfico de Variação Diária
+      const ctxVariacaoDiaGraph = ctxVariacaoDia.getContext("2d");
+      graficoVariacaoDiaRef.current = new Chart(ctxVariacaoDiaGraph, {
+        type: "line",
         data: {
-          labels: diasDaSemana,
+          labels: labelsDia,
           datasets: [
             {
-              label: "Consumo Diário (g)",
-              data: consumoPorDia,
-              backgroundColor: "#0C3F8C",
+              label: "Peso Total (g)",
+              data: pesosDia,
+              borderColor: "#0C3F8C",
+              fill: false,
+              tension: 0.1,
             },
           ],
         },
         options: {
           scales: {
+            x: {
+              type: 'time',
+              time: {
+                parser: 'HH:mm:ss',
+                unit: 'hour',
+                displayFormats: {
+                  hour: 'HH:mm',
+                },
+              },
+              title: {
+                display: true,
+                text: 'Hora',
+              },
+            },
             y: {
               beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Peso (g)',
+              },
             },
           },
         },
@@ -209,14 +245,57 @@ const HomePage = () => {
       if (graficoPesoAtualRef.current) {
         graficoPesoAtualRef.current.destroy();
       }
-      if (graficoSemanalRef.current) {
-        graficoSemanalRef.current.destroy();
+      if (graficoVariacaoDiaRef.current) {
+        graficoVariacaoDiaRef.current.destroy();
       }
     };
-  }, [tutorInfo, latestWeightData, weeklyWeightData]);
+  }, [tutorInfo, latestWeightData, weightData]);
 
-  // Funções para abrir e fechar os modais
-  const abrirFormulario = (tipo) => {
+  // Função para calcular o resumo semanal
+  const calcularResumoSemanal = () => {
+    const resumo = [];
+
+    // Obter os últimos 7 dias
+    const hoje = new Date();
+    for (let i = 0; i < 7; i++) {
+      const dia = new Date();
+      dia.setDate(hoje.getDate() - i);
+
+      // Filtrar dados do dia
+      const dadosDoDia = weightData.filter((dataPoint) => {
+        const timestamp = new Date(dataPoint.timestamp);
+        return isSameDay(timestamp, dia);
+      });
+
+      if (dadosDoDia.length > 0) {
+        const pesos = dadosDoDia.map((dataPoint) => dataPoint.totalWeight);
+        const pesoMaximo = Math.max(...pesos);
+        const pesoMinimo = Math.min(...pesos);
+        const consumo = pesoMaximo - pesoMinimo;
+
+        resumo.push({
+          dia: format(dia, 'EEE, dd/MM'),
+          pesoMaximo: pesoMaximo.toFixed(2),
+          pesoMinimo: pesoMinimo.toFixed(2),
+          consumo: consumo.toFixed(2),
+        });
+      } else {
+        resumo.push({
+          dia: format(dia, 'EEE, dd/MM'),
+          pesoMaximo: '-',
+          pesoMinimo: '-',
+          consumo: '-',
+        });
+      }
+    }
+
+    return resumo.reverse();
+  };
+
+  const resumoSemanal = calcularResumoSemanal();
+
+   // Funções para abrir e fechar os modais
+   const abrirFormulario = (tipo) => {
     if (tipo === "cadastroPetModal") setIsPetModalOpen(true);
     if (tipo === "cadastroTutorModal") setIsTutorModalOpen(true);
     if (tipo === "changePassword") setIsChangePasswordOpen(true);
@@ -377,6 +456,65 @@ const HomePage = () => {
     setIsPetModalOpen(true);
   };
 
+  // Função para resetar os gráficos e dados
+  const resetarGraficos = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/weights/reset`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        console.log('Dados de peso resetados com sucesso.');
+        // Limpar os dados de peso armazenados no estado
+        setWeightData([]);
+        setLatestWeightData(null);
+
+        // Destruir os gráficos existentes
+        if (graficoPesoAtualRef.current) {
+          graficoPesoAtualRef.current.destroy();
+          graficoPesoAtualRef.current = null;
+        }
+        if (graficoVariacaoDiaRef.current) {
+          graficoVariacaoDiaRef.current.destroy();
+          graficoVariacaoDiaRef.current = null;
+        }
+      } else {
+        console.error('Erro ao resetar os dados de peso:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Erro ao resetar os dados de peso:', error);
+    }
+  };
+
+  // Função para excluir a conta
+  const excluirConta = async () => {
+    const confirmacao = window.confirm('Tem certeza de que deseja excluir sua conta e todos os dados? Essa ação não pode ser desfeita.');
+    if (!confirmacao) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        // Limpar dados do usuário
+        localStorage.removeItem('token');
+        setTutorInfo(null);
+        setWeightData([]);
+        setLatestWeightData(null);
+
+        // Redirecionar para a página inicial ou de login
+        window.location.href = '/login';
+      } else {
+        console.error('Erro ao excluir a conta:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir a conta:', error);
+    }
+  };
+
   // Renderização condicional dentro do JSX
   if (loading) {
     return <p>Carregando...</p>;
@@ -398,8 +536,8 @@ const HomePage = () => {
       </header>
       <main className="main-content">
         <div className="container">
-          <aside aria-label="Perfil do Pet">
-            {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
+        <aside aria-label="Perfil do Pet">
+          {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
               <img
                 src={`${API_BASE_URL}/uploads/${tutorInfo.pets[0].imagem}`}
                 alt={`Foto de ${tutorInfo.pets[0].nome}`}
@@ -438,11 +576,34 @@ const HomePage = () => {
           </aside>
 
           <section>
-            <h2>Variação Semanal de Consumo</h2>
+            <h2>Variação de Peso ao Longo do Dia</h2>
             <div className="grafico-container">
-              <canvas id="graficoSemanal" width="400" height="200"></canvas>
+              <canvas id="graficoVariacaoDia" width="400" height="200"></canvas>
             </div>
 
+            <h2>Resumo Semanal</h2>
+            <table className="resumo-semanal">
+              <thead>
+                <tr>
+                  <th>Dia</th>
+                  <th>Peso Máximo (g)</th>
+                  <th>Peso Mínimo (g)</th>
+                  <th>Consumo (g)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumoSemanal.map((dia, index) => (
+                  <tr key={index}>
+                    <td>{dia.dia}</td>
+                    <td>{dia.pesoMaximo}</td>
+                    <td>{dia.pesoMinimo}</td>
+                    <td>{dia.consumo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Botões e outras seções mantidas */}
             <div className="formulario-botoes">
               <button
                 className="botoes"
@@ -461,6 +622,21 @@ const HomePage = () => {
                 onClick={() => abrirFormulario("changePassword")}
               >
                 Trocar Senha
+              </button>
+
+              <button
+              className="botoes"
+              onClick={resetarGraficos}
+            >
+              Resetar Gráficos
+            </button>
+
+              <button
+                className="botoes"
+                onClick={excluirConta}
+                style={{ backgroundColor: 'red', color: 'white' }}
+              >
+                Excluir Conta
               </button>
             </div>
           </section>
