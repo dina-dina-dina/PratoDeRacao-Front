@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import "./login.css";
 import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "./config";
+import axios from '../src/axios'
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -41,22 +42,27 @@ const LoginPage = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const requestBody = { email, password, nome };
-      if (telefone.trim() !== "") {
-        requestBody.telefone = telefone;
-      }
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+     
 
-      if (response.ok) {
-        const data = await response.json();
-        alert(data.message);
+
+      // const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({ email, password, nome }),
+      // });
+
+      const response = await axios.post('/api/auth/register', {
+        "email": email,
+        "password": password,
+        "nome": nome
+      })
+
+      if (response) {
+        const data = await response.data.message;
+        alert(data);
         setIsRegister(false); // Volta para a tela de login após registro bem-sucedido
         setEmail("");
         setPassword("");
