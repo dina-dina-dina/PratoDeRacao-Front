@@ -84,6 +84,7 @@ const HomePage = () => {
       if (latestResponse.ok) {
         const latestData = await latestResponse.json();
         setLatestWeightData(latestData);
+        console.log(latestData)
       } else {
         console.error('Erro ao buscar o peso atual:', latestResponse.statusText);
       }
@@ -93,6 +94,7 @@ const HomePage = () => {
       if (recentResponse.ok) {
         const recentData = await recentResponse.json();
         setWeightData(recentData);
+        // console.log(recentData)
       } else {
         console.error('Erro ao buscar os dados de peso:', recentResponse.statusText);
       }
@@ -139,7 +141,7 @@ const HomePage = () => {
     if (ctxPesoAtual && ctxVariacaoDia) {
       // Gráfico de Peso Atual
       const ctxPesoAtualGraph = ctxPesoAtual.getContext("2d");
-      const pesoAtual = latestWeightData ? latestWeightData.totalWeight : 0;
+      const pesoAtual = 35
 
       graficoPesoAtualRef.current = new Chart(ctxPesoAtualGraph, {
         type: "doughnut",
@@ -179,7 +181,9 @@ const HomePage = () => {
       });
 
       // Filtrar dados para o dia atual
-      const hoje = new Date();
+      const dataString = "2024-10-29"; // Formato IS
+      const hoje = new Date(dataString);
+      console.log(hoje)
       const inicioDoDia = startOfDay(hoje);
       const fimDoDia = endOfDay(hoje);
 
@@ -187,12 +191,15 @@ const HomePage = () => {
         const timestamp = new Date(dataPoint.timestamp);
         return timestamp >= inicioDoDia && timestamp <= fimDoDia;
       });
+     
 
       // Preparar dados para o gráfico de variação diária
       const labelsDia = dadosDiaAtual.map((dataPoint) => {
         const date = new Date(dataPoint.timestamp);
         return format(date, 'HH:mm:ss');
       });
+      console.log(dadosDiaAtual)
+      console.log(labelsDia)
 
       const pesosDia = dadosDiaAtual.map((dataPoint) => dataPoint.totalWeight);
 
@@ -206,13 +213,17 @@ const HomePage = () => {
             {
               label: "Peso Total (g)",
               data: pesosDia,
+              pointRadius: 0,
               borderColor: "#0C3F8C",
               fill: false,
               tension: 0.1,
+              showLine: true,
+              
             },
           ],
         },
         options: {
+        
           scales: {
             x: {
               type: 'time',
@@ -249,7 +260,7 @@ const HomePage = () => {
         graficoVariacaoDiaRef.current.destroy();
       }
     };
-  }, [tutorInfo, latestWeightData, weightData]);
+  }, [tutorInfo]);
 
   // Função para calcular o resumo semanal
   const calcularResumoSemanal = () => {
@@ -624,12 +635,12 @@ const HomePage = () => {
                 Trocar Senha
               </button>
 
-              <button
+              {/* <button
               className="botoes"
               onClick={resetarGraficos}
             >
               Resetar Gráficos
-            </button>
+            </button> */}
 
               <button
                 className="botoes"
