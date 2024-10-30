@@ -7,6 +7,7 @@ import { format, parseISO, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import API_BASE_URL from "./config";
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 
+
 // Registrar o plugin
 Chart.register(ChartDataLabels);
 
@@ -20,10 +21,20 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isTutorModalOpen, setIsTutorModalOpen] = useState(false);
+  const [isdadosOpen, setIsdadosOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [latestWeightData, setLatestWeightData] = useState(null);
   const [weightData, setWeightData] = useState([]); // Todos os dados de peso
   const [userEmail, setUserEmail] = useState("");
+  const [inputValue, setInputValue] = useState('');
+  const chartRef = useRef(null);
+  const [hora, setHora] = useState('');
+  const [peso, setPeso] = useState('');
+  const [dadosmodal, setdadosmodal] = useState('');
+  const [data, setData] = useState({ labels: [], datasets: [{ label: 'Peso do Pet', data: [], borderColor: 'rgba(75, 192, 192, 1)', borderWidth: 2, fill: false }] });
+  const [chartInstance, setChartInstance] = useState(null); // Estado para guardar a instância do gráfico
+
+  const [chart, setChart] = useState(null);
   const [petInfo, setPetInfo] = useState({
     nome: "",
     raca: "",
@@ -204,52 +215,57 @@ const HomePage = () => {
       const pesosDia = dadosDiaAtual.map((dataPoint) => dataPoint.totalWeight);
 
       // Gráfico de Variação Diária
-      const ctxVariacaoDiaGraph = ctxVariacaoDia.getContext("2d");
-      graficoVariacaoDiaRef.current = new Chart(ctxVariacaoDiaGraph, {
-        type: "line",
-        data: {
-          labels: labelsDia,
-          datasets: [
-            {
-              label: "Peso Total (g)",
-              data: pesosDia,
-              pointRadius: 0,
-              borderColor: "#0C3F8C",
-              fill: false,
-              tension: 0.1,
-              showLine: true,
+      // const ctxVariacaoDiaGraph = ctxVariacaoDia.getContext("2d");
+      // graficoVariacaoDiaRef.current = new Chart(ctxVariacaoDiaGraph, {
+      //   type: "line",
+      //   data: {
+      //     labels: labelsDia,
+      //     datasets: [
+      //       {
+      //         label: "Peso Total (g)",
+      //         data: pesosDia,
+      //         pointRadius: 0,
+      //         borderColor: "#0C3F8C",
+      //         fill: false,
+      //         tension: 0.1,
+      //         showLine: true,
 
-            },
-          ],
-        },
-        options: {
+      //       },
+      //     ],
+      //   },
+      //   options: {
 
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                parser: 'HH:mm:ss',
-                unit: 'hour',
-                displayFormats: {
-                  hour: 'HH:mm',
-                },
-              },
-              title: {
-                display: true,
-                text: 'Hora',
-              },
-            },
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Peso (g)',
-              },
-            },
-          },
-        },
-      });
+      //     scales: {
+      //       x: {
+      //         type: 'time',
+      //         time: {
+      //           parser: 'HH:mm:ss',
+      //           unit: 'hour',
+      //           displayFormats: {
+      //             hour: 'HH:mm',
+      //           },
+      //         },
+      //         title: {
+      //           display: true,
+      //           text: 'Hora',
+      //         },
+      //       },
+      //       y: {
+      //         beginAtZero: true,
+      //         title: {
+      //           display: true,
+      //           text: 'Peso (g)',
+      //         },
+      //       },
+      //     },
+      //   },
+      // });
+
+
     }
+
+
+
 
     // Cleanup: destruir os gráficos quando o componente for desmontado
     return () => {
@@ -262,6 +278,125 @@ const HomePage = () => {
     };
   }, [tutorInfo]);
 
+
+
+  // useEffect(() => {
+  //   if (chartRef.current) {
+  //     const ctx = chartRef.current.getContext('2d'); // Acessa o contexto do canvas
+
+  //     // Se ainda não houver uma instância do gráfico, cria uma
+  //     if (!chartInstance) {
+  //       const newChartInstance = new Chart(ctx, {
+  //         type: 'line',
+  //         data: {
+  //           labels: [], // Adicione suas labels aqui
+  //           datasets: [
+  //             {
+  //               label: 'Peso do Pet',
+  //               data: [], // Adicione os dados aqui
+  //               borderColor: 'rgba(75, 192, 192, 1)',
+  //               borderWidth: 2,
+  //               fill: false,
+  //             },
+  //           ],
+  //         },
+  //         options: {
+  //           responsive: true,
+  //           scales: {
+  //             x: {
+  //               title: {
+  //                 display: true,
+  //                 text: 'Hora'
+  //               }
+  //             },
+  //             y: {
+  //               title: {
+  //                 display: true,
+  //                 text: 'Peso (g)'
+  //               }
+  //             }
+  //           }
+  //         },
+  //       });
+  //       setChartInstance(newChartInstance); // Salva a instância do gráfico no estado
+  //     }
+  //   }
+  // }, [chartRef, chartInstance]); // Executa o efeito quando o chartRef ou chartInstance mudar
+
+  useEffect(() => {
+    if (chartRef.current && !chartInstance) {
+      const ctx = chartRef.current.getContext('2d'); // Acessa o contexto do canvas
+
+      const newChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [], // Inicializa com labels vazias
+          datasets: [
+            {
+              label: 'Peso do Pet',
+              data: [], // Inicializa com dados vazios
+              borderColor: "#0C3F8C",
+              borderWidth: 2,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Hora',
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Peso (g)',
+              },
+            },
+          },
+        },
+      });
+      setChartInstance(newChartInstance); // Salva a instância do gráfico no estado
+    }
+  }, [chartRef, chartInstance, tutorInfo]); // Executa quando chartRef ou chartInstance mudar
+
+  // const adicionarDados = (e) => {
+  //   e.preventDefault(); // Evita o reload da página
+  //   if (chartInstance) {
+  //     chartInstance.data.labels.push(hora); // Adiciona a hora como label no gráfico
+  //     chartInstance.data.datasets[0].data.push(peso); // Adiciona o peso como dado
+  //     chartInstance.update(); // Atualiza o gráfico
+  //   }
+  // };
+
+  const adicionarDados = (e) => {
+    e.preventDefault(); // Evita o reload da página
+    const novoPeso = Number(peso); // Converte o peso para número
+  
+    if (chartInstance) {
+      // Adiciona a hora como label e o peso como dado
+      chartInstance.data.labels.push(hora);
+      chartInstance.data.datasets[0].data.push(novoPeso);
+  
+      // Organiza os dados em ordem crescente
+      const sortedData = chartInstance.data.labels
+        .map((label, index) => ({ label, data: chartInstance.data.datasets[0].data[index] }))
+        .sort((a, b) => new Date(`1970-01-01T${a.label}:00`) - new Date(`1970-01-01T${b.label}:00`));
+  
+      // Atualiza as labels e os dados do gráfico
+      chartInstance.data.labels = sortedData.map(item => item.label);
+      chartInstance.data.datasets[0].data = sortedData.map(item => item.data);
+  
+      chartInstance.update(); // Atualiza o gráfico
+    }
+  
+    // Limpa os campos após adicionar
+    setHora('');
+    setPeso('');
+  };
   // Função para calcular o resumo semanal
   const calcularResumoSemanal = () => {
     const resumo = [];
@@ -310,11 +445,13 @@ const HomePage = () => {
     if (tipo === "cadastroPetModal") setIsPetModalOpen(true);
     if (tipo === "cadastroTutorModal") setIsTutorModalOpen(true);
     if (tipo === "changePassword") setIsChangePasswordOpen(true);
+    if (tipo === "dados") setIsdadosOpen(true);
   };
 
   const fecharFormulario = (tipo) => {
     if (tipo === "cadastroPetModal") setIsPetModalOpen(false);
     if (tipo === "cadastroTutorModal") setIsTutorModalOpen(false);
+    if (tipo === "dados") setIsdadosOpen(false);
     if (tipo === "changePassword") {
       setIsChangePasswordOpen(false);
       setOldPassword("");
@@ -466,6 +603,11 @@ const HomePage = () => {
     });
     setIsPetModalOpen(true);
   };
+  const abrirdadosModal = (pet) => {
+
+    setdadosmodal(true);
+  };
+
 
   // Função para resetar os gráficos e dados
   const resetarGraficos = async () => {
@@ -538,7 +680,7 @@ const HomePage = () => {
   if (!tutorInfo) {
     return <p>Nenhuma informação encontrada</p>;
   }
-  
+
   var simulados = [
     {
       "dia": "Segunda-Feira - 21/10",
@@ -604,6 +746,7 @@ const HomePage = () => {
                         <p>Raça: {pet.raca}</p>
                         <p>Peso: {pet.peso} kg</p>
                         <button onClick={() => abrirAtualizarPetModal(pet)}>Atualizar</button>
+                  
                       </li>
                     ))
                   ) : (
@@ -615,14 +758,15 @@ const HomePage = () => {
 
             <h3>Peso Atual da Ração</h3>
             <div className="grafico-container" style={{ height: '200px' }}>
-              <canvas id="graficoPesoAtual"></canvas>
+              <canvas ref={chartRef} id="graficoPesoAtual"></canvas>
+
             </div>
           </aside>
 
           <section>
             <h2>Variação de Peso ao Longo do Dia</h2>
             <div className="grafico-container">
-              <canvas id="graficoVariacaoDia" width="400" height="200"></canvas>
+            <canvas ref={chartRef} id="graficoVariacaoDia" width="400" height="200"></canvas>
             </div>
 
             <h2>Resumo Semanal</h2>
@@ -667,6 +811,12 @@ const HomePage = () => {
                 onClick={() => abrirFormulario("changePassword")}
               >
                 Trocar Senha
+              </button>
+              <button
+                className="botoes"
+                onClick={() => abrirFormulario("dados")}
+              >
+                Dados
               </button>
 
               {/* <button
@@ -762,6 +912,29 @@ const HomePage = () => {
             <button type="submit">Atualizar Tutor</button>
           </form>
         </div>
+      </div>
+      <div className="modal" style={{ display: isdadosOpen ? 'flex' : 'none' }}>
+       
+          <div className="modal-content">
+            <button onClick={() => fecharFormulario('dados')}>X</button>
+            <h3>Dados de Consumo</h3>
+            <form>
+              <input
+                type="text"
+                value={hora}
+                onChange={(e) => setHora(e.target.value)}
+                placeholder="Digite a hora (HH:MM)"
+              />
+              <input
+                type="number"
+                value={peso}
+                onChange={(e) => setPeso(e.target.value)}
+                placeholder="Digite o peso (g)"
+              />
+              <button onClick={adicionarDados}>Adicionar</button>
+            </form>
+          </div>
+       
       </div>
 
       {/* Modal de Troca de Senha */}
