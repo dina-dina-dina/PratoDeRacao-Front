@@ -163,7 +163,7 @@ const HomePage = () => {
             },
             datalabels: {
               display: true,
-              formatter: function(value, context) {
+              formatter: function (value, context) {
                 if (context.dataIndex === 0) {
                   return `${pesoAtual.toFixed(2)} g`;
                 } else {
@@ -191,7 +191,7 @@ const HomePage = () => {
         const timestamp = new Date(dataPoint.timestamp);
         return timestamp >= inicioDoDia && timestamp <= fimDoDia;
       });
-     
+
 
       // Preparar dados para o gráfico de variação diária
       const labelsDia = dadosDiaAtual.map((dataPoint) => {
@@ -218,12 +218,12 @@ const HomePage = () => {
               fill: false,
               tension: 0.1,
               showLine: true,
-              
+
             },
           ],
         },
         options: {
-        
+
           scales: {
             x: {
               type: 'time',
@@ -305,8 +305,8 @@ const HomePage = () => {
 
   const resumoSemanal = calcularResumoSemanal();
 
-   // Funções para abrir e fechar os modais
-   const abrirFormulario = (tipo) => {
+  // Funções para abrir e fechar os modais
+  const abrirFormulario = (tipo) => {
     if (tipo === "cadastroPetModal") setIsPetModalOpen(true);
     if (tipo === "cadastroTutorModal") setIsTutorModalOpen(true);
     if (tipo === "changePassword") setIsChangePasswordOpen(true);
@@ -538,6 +538,39 @@ const HomePage = () => {
   if (!tutorInfo) {
     return <p>Nenhuma informação encontrada</p>;
   }
+  
+  var simulados = [
+    {
+      "dia": "Segunda-Feira - 21/10",
+      "pesoMaximo": 100,
+      "pesoMinimo": 50,
+      "consumo": 50
+    },
+    {
+      "dia": "Terça-Feira - 22/10",
+      "pesoMaximo": 80,
+      "pesoMinimo": 20,
+      "consumo": 60
+    },
+    {
+      "dia": "Quarta-Feira - 23/10",
+      "pesoMaximo": 75,
+      "pesoMinimo": 50,
+      "consumo": 25
+    },
+    {
+      "dia": "Quinta-Feira - 24/10",
+      "pesoMaximo": 100,
+      "pesoMinimo": 30,
+      "consumo": 70
+    },
+    {
+      "dia": "Sexta-Feira - 25/10",
+      "pesoMaximo": 50,
+      "pesoMinimo": 20,
+      "consumo": 30
+    },
+  ]
 
   return (
     <div className="home-page">
@@ -547,8 +580,8 @@ const HomePage = () => {
       </header>
       <main className="main-content">
         <div className="container">
-        <aside aria-label="Perfil do Pet">
-          {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
+          <aside aria-label="Perfil do Pet">
+            {tutorInfo.pets && tutorInfo.pets.length > 0 ? (
               <img
                 src={`${API_BASE_URL}/uploads/${tutorInfo.pets[0].imagem}`}
                 alt={`Foto de ${tutorInfo.pets[0].nome}`}
@@ -603,7 +636,8 @@ const HomePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {resumoSemanal.map((dia, index) => (
+
+                {simulados.map((dia, index) => (
                   <tr key={index}>
                     <td>{dia.dia}</td>
                     <td>{dia.pesoMaximo}</td>
@@ -654,8 +688,8 @@ const HomePage = () => {
         </div>
       </main>
 
-{/* Modal de Cadastro do Pet */}
-<div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
+      {/* Modal de Cadastro do Pet */}
+      <div className="modal" style={{ display: isPetModalOpen ? 'flex' : 'none' }}>
         <div className="modal-content">
           <button onClick={() => fecharFormulario('cadastroPetModal')}>X</button>
           <h3>{petInfo.id ? "Atualizar Pet" : "Cadastrar Pet"}</h3>
